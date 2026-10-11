@@ -6,6 +6,9 @@ FROM postgres:17-alpine
 LABEL maintainer="SMP DevOps Team"
 LABEL description="PostgreSQL container for Student Management Portal"
 
+# Upgrade Alpine packages to patch any OS-level CVEs
+RUN apk update && apk upgrade --no-cache
+
 # Environment defaults (matches backend application.properties)
 ENV POSTGRES_DB=smp_db \
     POSTGRES_USER=postgres \

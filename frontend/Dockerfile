@@ -21,6 +21,9 @@ FROM nginx:alpine
 LABEL maintainer="SMP DevOps Team"
 LABEL description="Nginx web server hosting Angular 22 SMP Portal"
 
+# Upgrade Alpine packages to patch OS-level CVEs (libexpat, libpng, nghttp2-libs, pcre2, tiff, zlib)
+RUN apk update && apk upgrade --no-cache
+
 # Copy built browser static assets from builder stage
 COPY --from=builder /app/dist/student-management-portal-frontend/browser /usr/share/nginx/html
 
