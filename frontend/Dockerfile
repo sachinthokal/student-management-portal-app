@@ -24,9 +24,13 @@ LABEL description="Nginx web server hosting Angular 22 SMP Portal"
 # Copy built browser static assets from builder stage
 COPY --from=builder /app/dist/student-management-portal-frontend/browser /usr/share/nginx/html
 
+# Ensure index.html points to Angular application entry
+RUN if [ -f /usr/share/nginx/html/index.csr.html ]; then cp /usr/share/nginx/html/index.csr.html /usr/share/nginx/html/index.html; fi
+
 # Copy custom Nginx configuration for Angular SPA routing
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
 
 CMD ["nginx", "-g", "daemon off;"]
+
