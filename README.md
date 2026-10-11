@@ -71,3 +71,4 @@ npm start
 * **Backend Logging:** Configured with SLF4J / Logback ANSI colors, timing metrics, and structured exceptions.
 * **Frontend Telemetry:** Browser console logger with color-coded status badges and latency measurements.
 * **Security (Trivy):** 100% verified clean with 0 vulnerabilities across all dependencies.
+
