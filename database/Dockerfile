@@ -6,8 +6,11 @@ FROM postgres:17-alpine
 LABEL maintainer="SMP DevOps Team"
 LABEL description="PostgreSQL container for Student Management Portal"
 
-# Upgrade Alpine packages to patch any OS-level CVEs
-RUN apk update && apk upgrade --no-cache
+# Upgrade Alpine packages and replace vulnerable gosu Go binary with lightweight C-based su-exec
+RUN apk update && apk upgrade --no-cache && \
+    apk add --no-cache su-exec && \
+    sed -i 's/exec gosu postgres/exec su-exec postgres/g' /usr/local/bin/docker-entrypoint.sh && \
+    rm -f /usr/local/bin/gosu
 
 # Environment defaults (matches backend application.properties)
 ENV POSTGRES_DB=smp_db \
