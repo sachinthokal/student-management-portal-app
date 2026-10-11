@@ -1,0 +1,368 @@
+<!-- Ambient Glow Background -->
+<div class="ambient-glow"></div>
+<div class="mesh-grid"></div>
+
+<!-- Friendly Toast Notification -->
+@if (toast()) {
+  <div class="toast-wrapper" [ngClass]="'toast-' + toast()?.type">
+    <i class="fa-solid" [ngClass]="{
+      'fa-circle-check text-emerald-400': toast()?.type === 'success',
+      'fa-circle-exclamation text-rose-400': toast()?.type === 'error',
+      'fa-circle-info text-cyan-400': toast()?.type === 'info'
+    }"></i>
+    <span>{{ toast()?.message }}</span>
+  </div>
+}
+
+<div class="app-layout">
+  <!-- Top Navigation Header -->
+  <header class="top-nav">
+    <div class="nav-container">
+      <!-- Brand & Portal Name -->
+      <div class="brand-group">
+        <div class="logo-box">
+          <i class="fa-solid fa-graduation-cap"></i>
+        </div>
+        <div>
+          <div class="brand-title">
+            SMP <span>Campus Portal</span>
+          </div>
+          <p class="brand-subtitle">Student Directory & Academic Enrollment</p>
+        </div>
+      </div>
+
+      <!-- Live Campus Network Status & Main Actions -->
+      <div class="nav-actions">
+        <!-- Human-friendly Status Indicator -->
+        <div class="status-indicator" [class.status-online]="isServerConnected()" [class.status-offline]="!isServerConnected()">
+          <span class="status-dot"></span>
+          <span>{{ isServerConnected() ? 'Portal Connected' : 'Connecting...' }}</span>
+        </div>
+
+        <!-- Refresh Button -->
+        <button class="btn-icon" (click)="getStudents()" [disabled]="isLoading()" title="Refresh Student Directory">
+          <i class="fa-solid fa-arrows-rotate" [class.fa-spin]="isLoading()"></i>
+        </button>
+
+        <!-- Download Directory Button -->
+        <button class="btn-secondary" (click)="exportCSV()" [disabled]="totalCount() === 0" title="Download Student List (Excel/CSV)">
+          <i class="fa-solid fa-cloud-arrow-down"></i>
+          <span>Download List</span>
+        </button>
+
+        <!-- Enroll New Student Button -->
+        <button class="btn-primary" (click)="openCreateModal()">
+          <i class="fa-solid fa-user-plus"></i>
+          <span>Enroll Student</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Area -->
+  <main class="main-content">
+    
+    <!-- Friendly Notice if Server is Reconnecting -->
+    @if (!isServerConnected() && errorMessage()) {
+      <div class="alert-banner">
+        <div class="alert-icon">
+          <i class="fa-solid fa-circle-exclamation"></i>
+        </div>
+        <div class="alert-text">
+          <strong>Campus Network Notice</strong>
+          <p>We are currently unable to reach the student database. Please verify your campus network connection.</p>
+        </div>
+        <button class="btn-alert-retry" (click)="getStudents()">
+          <i class="fa-solid fa-rotate-right"></i> Try Again
+        </button>
+      </div>
+    }
+
+    <!-- Key Metrics Overview Cards -->
+    <section class="kpi-grid">
+      <!-- Card 1: Total Enrolled -->
+      <div class="kpi-card">
+        <div class="kpi-info">
+          <span class="kpi-label">Total Enrolled</span>
+          <div class="kpi-value">{{ totalCount() }}</div>
+          <span class="kpi-subtext">Active students in campus</span>
+        </div>
+        <div class="kpi-icon-box kpi-icon-blue">
+          <i class="fa-solid fa-user-graduate"></i>
+        </div>
+      </div>
+
+      <!-- Card 2: Academic Departments -->
+      <div class="kpi-card">
+        <div class="kpi-info">
+          <span class="kpi-label">Academic Branches</span>
+          <div class="kpi-value">{{ departmentCount() }}</div>
+          <span class="kpi-subtext">Engineering & Technology</span>
+        </div>
+        <div class="kpi-icon-box kpi-icon-purple">
+          <i class="fa-solid fa-building-columns"></i>
+        </div>
+      </div>
+
+      <!-- Card 3: Filtered View -->
+      <div class="kpi-card">
+        <div class="kpi-info">
+          <span class="kpi-label">Students Shown</span>
+          <div class="kpi-value">{{ filteredStudents().length }}</div>
+          <span class="kpi-subtext">In current selected branch</span>
+        </div>
+        <div class="kpi-icon-box kpi-icon-emerald">
+          <i class="fa-solid fa-users-viewfinder"></i>
+        </div>
+      </div>
+
+      <!-- Card 4: System Health -->
+      <div class="kpi-card">
+        <div class="kpi-info">
+          <span class="kpi-label">Directory Status</span>
+          <div class="kpi-value api-status-text" [class.text-green]="isServerConnected()" [class.text-red]="!isServerConnected()">
+            {{ isServerConnected() ? 'Up to Date' : 'Syncing' }}
+          </div>
+          <span class="kpi-subtext">Real-time student records</span>
+        </div>
+        <div class="kpi-icon-box kpi-icon-cyan">
+          <i class="fa-solid fa-circle-check"></i>
+        </div>
+      </div>
+    </section>
+
+    <!-- Search & Department Tabs Toolbar -->
+    <div class="toolbar-section">
+      <!-- Search Input -->
+      <div class="search-box">
+        <i class="fa-solid fa-magnifying-glass search-icon"></i>
+        <input 
+          type="text" 
+          [ngModel]="searchQuery()" 
+          (ngModelChange)="onSearchChange($event)"
+          placeholder="Search by student name, email, roll number, or department..." 
+          class="search-input"
+        />
+        @if (searchQuery()) {
+          <button class="clear-search" (click)="onSearchChange('')" title="Clear Search">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        }
+      </div>
+
+      <!-- Department Filter Pills -->
+      <div class="dept-filters">
+        <button 
+          class="filter-pill" 
+          [class.active]="selectedDepartment() === 'ALL'"
+          (click)="onDepartmentFilter('ALL')">
+          All Branches
+        </button>
+        @for (dept of availableDepartments; track dept) {
+          <button 
+            class="filter-pill" 
+            [class.active]="selectedDepartment() === dept"
+            (click)="onDepartmentFilter(dept)">
+            {{ dept }}
+          </button>
+        }
+      </div>
+    </div>
+
+    <!-- Student Directory Table -->
+    <section class="table-container">
+      @if (isLoading()) {
+        <!-- Skeleton Loader -->
+        <div class="skeleton-wrapper">
+          <div class="skeleton-row" *ngFor="let i of [1,2,3,4,5]">
+            <div class="skeleton-avatar"></div>
+            <div class="skeleton-line-long"></div>
+            <div class="skeleton-line-short"></div>
+            <div class="skeleton-badge"></div>
+          </div>
+        </div>
+      } @else {
+        <table class="student-table">
+          <thead>
+            <tr>
+              <th style="width: 90px;">Roll No</th>
+              <th>Student Details</th>
+              <th>Email Address</th>
+              <th>Department / Branch</th>
+              <th style="text-align: right; width: 130px;">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (student of filteredStudents(); track student.id) {
+              <tr class="table-row">
+                <!-- Roll No / ID -->
+                <td>
+                  <span class="id-badge">#{{ student.id }}</span>
+                </td>
+
+                <!-- Student Name & Avatar -->
+                <td>
+                  <div class="student-profile">
+                    <div class="avatar" [style.background]="getAvatarGradient(student.id)">
+                      {{ getInitials(student.firstName, student.lastName) }}
+                    </div>
+                    <div class="student-info">
+                      <div class="student-name">{{ student.firstName }} {{ student.lastName }}</div>
+                      <div class="student-sub">Enrolled Student</div>
+                    </div>
+                  </div>
+                </td>
+
+                <!-- Email -->
+                <td>
+                  <a [href]="'mailto:' + student.email" class="email-link" title="Send Email">
+                    <i class="fa-regular fa-envelope"></i>
+                    <span>{{ student.email }}</span>
+                  </a>
+                </td>
+
+                <!-- Department Badge -->
+                <td>
+                  <span class="dept-badge" [ngClass]="getDepartmentBadgeClass(student.department)">
+                    <i class="fa-solid fa-graduation-cap"></i>
+                    {{ student.department || 'General' }}
+                  </span>
+                </td>
+
+                <!-- Actions -->
+                <td>
+                  <div class="action-buttons">
+                    <button class="action-btn edit-btn" (click)="openEditModal(student)" title="Edit Student Profile">
+                      <i class="fa-solid fa-pen-to-square"></i>
+                    </button>
+                    <button class="action-btn delete-btn" (click)="promptDelete(student)" title="Remove Student">
+                      <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="5" class="empty-state-cell">
+                  <div class="empty-state-box">
+                    <div class="empty-icon">
+                      <i class="fa-solid fa-folder-open"></i>
+                    </div>
+                    <h4>No Students Found</h4>
+                    <p>There are no student records matching your search or no students have been enrolled yet.</p>
+                    <button class="btn-primary" style="margin-top: 14px;" (click)="openCreateModal()">
+                      <i class="fa-solid fa-plus"></i> Enroll First Student
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+    </section>
+  </main>
+</div>
+
+<!-- Modal: Enroll / Edit Student -->
+@if (isModalOpen()) {
+  <div class="modal-backdrop" (click)="closeModal()">
+    <div class="modal-dialog" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <div class="modal-icon">
+            <i class="fa-solid" [ngClass]="modalMode() === 'create' ? 'fa-user-plus' : 'fa-user-pen'"></i>
+          </div>
+          <div>
+            <h3>{{ modalMode() === 'create' ? 'Enroll New Student' : 'Edit Student Profile' }}</h3>
+            <p>{{ modalMode() === 'create' ? 'Enter academic and contact information' : 'Update existing student details' }}</p>
+          </div>
+        </div>
+        <button class="modal-close-btn" (click)="closeModal()">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <div class="form-row">
+          <div class="form-group">
+            <label>First Name <span class="required">*</span></label>
+            <input 
+              type="text" 
+              [(ngModel)]="formStudent().firstName" 
+              placeholder="e.g. Rahul" 
+              class="form-input"
+            />
+          </div>
+          <div class="form-group">
+            <label>Last Name <span class="required">*</span></label>
+            <input 
+              type="text" 
+              [(ngModel)]="formStudent().lastName" 
+              placeholder="e.g. Sharma" 
+              class="form-input"
+            />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Email Address <span class="required">*</span></label>
+          <div class="input-with-icon">
+            <i class="fa-regular fa-envelope input-icon"></i>
+            <input 
+              type="email" 
+              [(ngModel)]="formStudent().email" 
+              placeholder="e.g. rahul.sharma@college.edu" 
+              class="form-input has-icon"
+            />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Department / Branch <span class="required">*</span></label>
+          <select [(ngModel)]="formStudent().department" class="form-input form-select">
+            @for (dept of availableDepartments; track dept) {
+              <option [value]="dept">{{ dept }}</option>
+            }
+          </select>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn-secondary" (click)="closeModal()" [disabled]="isSaving()">Cancel</button>
+        <button class="btn-primary" (click)="saveStudent()" [disabled]="isSaving()">
+          @if (isSaving()) {
+            <i class="fa-solid fa-spinner fa-spin"></i>
+            <span>Saving...</span>
+          } @else {
+            <i class="fa-solid fa-check"></i>
+            <span>{{ modalMode() === 'create' ? 'Complete Enrollment' : 'Save Changes' }}</span>
+          }
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Modal: Confirm Delete / Removal -->
+@if (studentToDelete()) {
+  <div class="modal-backdrop" (click)="cancelDelete()">
+    <div class="modal-dialog modal-dialog-sm" (click)="$event.stopPropagation()">
+      <div class="delete-icon-box">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+      </div>
+      <div class="delete-content">
+        <h4>Remove Student from Directory?</h4>
+        <p>
+          Are you sure you want to remove <strong>{{ studentToDelete()?.firstName }} {{ studentToDelete()?.lastName }}</strong> (Roll No: #{{ studentToDelete()?.id }}) from the active directory?
+        </p>
+      </div>
+      <div class="modal-footer-centered">
+        <button class="btn-secondary" (click)="cancelDelete()">Keep Student</button>
+        <button class="btn-danger" (click)="confirmDelete()">
+          <i class="fa-solid fa-trash-can"></i> Remove Student
+        </button>
+      </div>
+    </div>
+  </div>
+}
