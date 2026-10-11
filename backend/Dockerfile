@@ -24,8 +24,9 @@ LABEL description="Spring Boot Backend Service for Student Management Portal"
 
 WORKDIR /app
 
-# Run as non-root user for container security hardening
-RUN addgroup -S smpgroup && adduser -S smpuser -G smpgroup
+# Upgrade Alpine packages to patch OS-level CVEs (e.g., libpng, zlib) and run as non-root user
+RUN apk update && apk upgrade --no-cache && \
+    addgroup -S smpgroup && adduser -S smpuser -G smpgroup
 
 # Copy compiled JAR from builder stage
 COPY --from=builder /build/target/*.jar app.jar
